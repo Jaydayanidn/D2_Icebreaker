@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>D2 COP — Word Search Challenge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0d12;--surface:#111620;--surface2:#171d2a;--border:#1e2636;--border-hi:#2a3348;
+  --text:#d4dae8;--text-dim:#4e5a73;--accent:#4f8ff7;--accent-glow:rgba(79,143,247,0.15);
+  --cat-de:#22d3ee;--cat-ai:#a78bfa;--cat-em:#fbbf24;
+  --cat-pd:#34d399;--cat-gr:#f87171;--cat-gen:#94a3b8;
+}
+html{font-size:16px;-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 50% -20%,rgba(79,143,247,0.06),transparent);pointer-events:none;z-index:0}
+
+/* ── HEADER ── */
+.header{position:relative;z-index:1;padding:1.2rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;background:var(--surface)}
+.header-left{display:flex;align-items:center;gap:0.8rem}
+.logo{font-family:'JetBrains Mono',monospace;font-size:0.6rem;letter-spacing:0.18em;color:var(--accent);text-transform:uppercase;background:var(--accent-glow);padding:0.3rem 0.65rem;border:1px solid rgba(79,143,247,0.2);border-radius:3px;font-weight:600}
+.title{font-size:1.25rem;font-weight:700;letter-spacing:-0.03em}
+.title span{color:var(--accent)}
+.stats{display:flex;gap:1.2rem;align-items:center}
+.stat{text-align:center;min-width:48px}
+.stat-val{font-family:'JetBrains Mono',monospace;font-size:1.15rem;font-weight:700;color:var(--accent)}
+.stat-label{font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);margin-top:1px}
+.divider{color:var(--border-hi);font-size:1.2rem}
+
+/* ── LAYOUT ── */
+.app{position:relative;z-index:1;display:flex;gap:0;min-height:calc(100vh - 72px)}
+.grid-panel{flex:1;padding:1.2rem;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:auto}
+.sidebar{width:300px;border-left:1px solid var(--border);display:flex;flex-direction:column;background:var(--surface);overflow:hidden}
+.sidebar-scroll{flex:1;overflow-y:auto;padding:1rem}
+
+/* ── GRID ── */
+.grid-wrapper{position:relative;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+table.g{border-collapse:collapse;cursor:crosshair}
+table.g td{
+  width:27px;height:27px;text-align:center;vertical-align:middle;
+  font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:600;
+  color:var(--text-dim);border:1px solid var(--border);
+  transition:background 0.1s,color 0.1s,box-shadow 0.1s;position:relative;
+}
+table.g td:hover{background:var(--surface2);color:var(--text)}
+table.g td.sel{background:rgba(79,143,247,0.18);color:var(--text);box-shadow:inset 0 0 0 1px rgba(79,143,247,0.3)}
+table.g td.found{color:#fff !important;font-weight:700;border-color:transparent !important}
+table.g td.f-de{background:rgba(34,211,238,0.28) !important}
+table.g td.f-ai{background:rgba(167,139,250,0.28) !important}
+table.g td.f-em{background:rgba(251,191,36,0.25) !important}
+table.g td.f-pd{background:rgba(52,211,153,0.25) !important}
+table.g td.f-gr{background:rgba(248,113,113,0.25) !important}
+table.g td.f-gen{background:rgba(148,163,184,0.2) !important}
+
+/* ── SIDEBAR ── */
+.info-box{font-size:0.72rem;color:var(--text-dim);padding:0.65rem 0.75rem;background:var(--surface2);border-radius:5px;margin-bottom:1rem;line-height:1.55;border:1px solid var(--border)}
+.info-box strong{color:var(--text)}
+.prog-wrap{margin-bottom:1rem}
+.prog-row{display:flex;justify-content:space-between;font-size:0.68rem;color:var(--text-dim);margin-bottom:0.35rem;font-family:'JetBrains Mono',monospace}
+.prog-bar{height:5px;background:var(--surface2);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;background:var(--accent);border-radius:3px;transition:width 0.4s ease}
+
+.cat-sec{margin-bottom:1rem}
+.cat-hdr{font-size:0.62rem;font-weight:600;text-transform:uppercase;letter-spacing:0.12em;padding:0.3rem 0.55rem;border-radius:3px;margin-bottom:0.35rem;display:flex;align-items:center;gap:0.4rem}
+.cat-hdr .d{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.c-de .d{background:var(--cat-de)}.c-de{color:var(--cat-de);background:rgba(34,211,238,0.07)}
+.c-ai .d{background:var(--cat-ai)}.c-ai{color:var(--cat-ai);background:rgba(167,139,250,0.07)}
+.c-em .d{background:var(--cat-em)}.c-em{color:var(--cat-em);background:rgba(251,191,36,0.07)}
+.c-pd .d{background:var(--cat-pd)}.c-pd{color:var(--cat-pd);background:rgba(52,211,153,0.07)}
+.c-gr .d{background:var(--cat-gr)}.c-gr{color:var(--cat-gr);background:rgba(248,113,113,0.07)}
+.c-gen .d{background:var(--cat-gen)}.c-gen{color:var(--cat-gen);background:rgba(148,163,184,0.07)}
+
+.wrd{
+  font-family:'JetBrains Mono',monospace;font-size:0.62rem;letter-spacing:0.03em;
+  padding:0.22rem 0.45rem;display:inline-block;margin:0.12rem;
+  border-radius:3px;background:var(--bg);color:var(--text-dim);
+  border:1px solid var(--border);transition:all 0.2s;cursor:default;
+}
+.wrd:hover:not(.done){border-color:var(--border-hi);color:var(--text)}
+.wrd.done{text-decoration:line-through;opacity:0.3;border-color:transparent}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(50px);
+  background:var(--surface2);border:1px solid var(--accent);padding:0.5rem 1.1rem;
+  border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:0.78rem;
+  color:var(--accent);z-index:50;transition:transform 0.25s ease,opacity 0.25s;opacity:0;
+  pointer-events:none;white-space:nowrap;box-shadow:0 4px 24px rgba(0,0,0,0.4);
+}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+/* ── VICTORY ── */
+.victory{position:fixed;inset:0;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;z-index:100;opacity:0;pointer-events:none;transition:opacity 0.5s}
+.victory.show{opacity:1;pointer-events:all}
+.v-card{background:var(--surface);border:1px solid var(--border-hi);border-radius:10px;padding:2.5rem 3rem;text-align:center;max-width:400px}
+.v-card h2{font-size:1.6rem;font-weight:700;margin-bottom:0.4rem}
+.v-card h2 span{color:var(--accent)}
+.v-card p{color:var(--text-dim);font-size:0.85rem;margin-bottom:1.2rem}
+.v-time{font-family:'JetBrains Mono',monospace;font-size:2.2rem;color:var(--accent);font-weight:700}
+.v-btn{
+  font-family:'IBM Plex Sans',sans-serif;font-size:0.82rem;font-weight:600;
+  padding:0.55rem 1.4rem;border:1px solid var(--accent);background:transparent;
+  color:var(--accent);border-radius:5px;cursor:pointer;transition:all 0.2s;margin-top:1.2rem;
+}
+.v-btn:hover{background:var(--accent);color:#fff}
+
+/* ── RESPONSIVE ── */
+@media(max-width:960px){
+  .app{flex-direction:column}
+  .sidebar{width:100%;border-left:none;border-top:1px solid var(--border);max-height:42vh}
+  table.g td{width:23px;height:23px;font-size:0.6rem}
+}
+@media(max-width:600px){
+  table.g td{width:15px;height:15px;font-size:0.42rem}
+  .header{padding:0.8rem 1rem}
+  .title{font-size:1rem}
+  .stats{gap:0.6rem}
+  .stat-val{font-size:0.9rem}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <span class="logo">D2 COP</span>
+    <div class="title">Word Search <span>Challenge</span></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="stat-val" id="fc">0</div><div class="stat-label">Found</div></div>
+    <div class="stat divider">/</div>
+    <div class="stat"><div class="stat-val" id="tc">62</div><div class="stat-label">Total</div></div>
+    <div class="stat"><div class="stat-val" id="tm">00:00</div><div class="stat-label">Time</div></div>
+  </div>
+</div>
+
+<div class="app">
+  <div class="grid-panel">
+    <div class="grid-wrapper" id="gw">
+      <table class="g" id="gt"></table>
+    </div>
+  </div>
+  <div class="sidebar">
+    <div class="sidebar-scroll">
+      <div class="info-box">
+        <strong>How to play</strong> — Click &amp; drag across letters to highlight a word. Words run <strong>horizontally →</strong> or <strong>vertically ↓</strong>. Find all 62 data &amp; AI terms!
+      </div>
+      <div class="prog-wrap">
+        <div class="prog-row"><span id="pt">0 / 62</span><span id="pp">0%</span></div>
+        <div class="prog-bar"><div class="prog-fill" id="pf" style="width:0%"></div></div>
+      </div>
+      <div id="wl"></div>
+    </div>
+  </div>
+</div>
+
+<div class="victory" id="vic">
+  <div class="v-card">
+    <h2>All <span>62</span> Found!</h2>
+    <p>You crushed the D2 COP Word Search</p>
+    <div class="v-time" id="vt">00:00</div>
+    <button class="v-btn" onclick="location.reload()">Play Again</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const G=[
+["M","S","V","P","A","S","S","U","M","P","T","I","O","N","S","N","O","W","F","L","A","K","E","C"],
+["A","E","P","I","P","E","L","I","N","E","G","L","C","O","M","P","L","I","A","N","C","E","I","P"],
+["P","M","I","A","N","A","L","Y","T","I","C","S","L","P","F","C","O","N","N","E","C","T","O","R"],
+["P","A","N","J","E","C","H","A","R","T","E","R","E","Q","U","I","R","E","M","E","N","T","V","O"],
+["I","N","G","M","N","P","R","O","F","I","L","I","N","G","Z","E","C","E","I","Q","V","R","A","C"],
+["N","T","E","T","R","A","I","N","I","N","G","I","T","T","D","X","H","T","T","P","S","I","L","E"],
+["G","I","S","H","R","P","M","A","N","O","M","A","L","Y","A","P","E","F","I","D","E","S","I","S"],
+["C","C","T","B","U","I","P","U","S","E","C","A","S","E","S","E","S","A","G","A","C","K","D","S"],
+["L","P","I","X","F","T","L","T","E","S","T","I","N","G","H","R","T","I","A","T","U","W","A","B"],
+["U","R","O","I","N","T","E","G","R","A","T","I","O","N","B","I","R","R","T","A","R","O","T","E"],
+["S","E","N","A","Q","H","M","E","T","A","D","A","T","A","O","M","A","N","I","B","I","R","I","N"],
+["T","D","G","R","A","L","E","R","T","I","N","G","E","Y","A","E","T","E","O","R","T","K","O","C"],
+["E","I","O","C","O","M","N","I","M","P","A","C","T","P","R","N","I","S","N","I","Y","F","N","H"],
+["R","C","V","H","D","E","T","L","I","D","R","I","F","T","D","T","O","S","R","C","F","L","P","M"],
+["I","T","E","I","M","V","A","I","C","O","N","S","T","R","A","I","N","T","A","K","E","O","V","A"],
+["N","I","R","T","O","A","T","N","V","E","R","S","I","O","N","I","N","G","U","S","W","W","V","R"],
+["G","V","N","E","N","L","I","E","W","D","O","C","U","M","E","N","T","A","T","I","O","N","R","K"],
+["M","E","A","C","I","U","O","A","J","W","I","R","I","N","N","O","V","A","T","I","O","N","G","T"],
+["E","S","N","T","T","A","N","G","D","E","V","O","P","S","A","U","T","O","M","A","T","I","O","N"],
+["T","C","C","U","O","T","S","E","G","M","E","N","T","A","T","I","O","N","T","O","L","O","G","Y"],
+["R","H","E","R","R","I","A","N","B","W","A","Z","U","R","E","G","R","E","S","S","I","O","N","B"],
+["I","E","C","E","I","O","H","T","I","U","W","A","R","E","H","O","U","S","E","M","M","L","M","V"],
+["C","M","Q","L","N","N","T","R","A","N","S","F","O","R","M","A","T","I","O","N","K","S","J","B"],
+["H","A","J","P","G","F","T","I","S","R","D","C","E","R","T","I","F","I","C","A","T","I","O","N"]
+];
+
+const CATS={
+  de:{l:"Data Engineering",c:"c-de",f:"f-de",w:[]},
+  ai:{l:"AI & Analytics",c:"c-ai",f:"f-ai",w:[]},
+  em:{l:"Evaluation & Metrics",c:"c-em",f:"f-em",w:[]},
+  pd:{l:"Process & Delivery",c:"c-pd",f:"f-pd",w:[]},
+  gr:{l:"Governance & Risk",c:"c-gr",f:"f-gr",w:[]},
+  gen:{l:"General",c:"c-gen",f:"f-gen",w:[]}
+};
+
+const CM={
+  PIPELINE:"de",INGESTION:"de",CONNECTOR:"de",SNOWFLAKE:"de",DATABRICKS:"de",
+  AZURE:"de",WAREHOUSE:"de",TRANSFORMATION:"de",METADATA:"de",INTEGRATION:"de",
+  SCHEMA:"de",API:"de",LINEAGE:"de",DEVOPS:"de",GIT:"de",
+  ANALYTICS:"ai",PROFILING:"ai",ANOMALY:"ai",CLUSTERING:"ai",PREDICTIVE:"ai",
+  REGRESSION:"ai",SEGMENTATION:"ai",TRAINING:"ai",INNOVATION:"ai",AUTOMATION:"ai",AGENT:"ai",
+  TESTING:"em",BENCHMARK:"em",EXPERIMENT:"em",EVALUATION:"em",CONSTRAINT:"em",
+  DRIFT:"em",VALIDATION:"em",FAIRNESS:"em",BIAS:"em",METRIC:"em",
+  REQUIREMENT:"pd",CHARTER:"pd",USECASE:"pd",ASSUMPTION:"pd",DOCUMENTATION:"pd",
+  VERSIONING:"pd",CERTIFICATION:"pd",WORKFLOW:"pd",DASHBOARD:"pd",ALERTING:"pd",
+  TARGET:"pd",INTAKE:"pd",
+  COMPLIANCE:"gr",GOVERNANCE:"gr",RISK:"gr",SECURITY:"gr",MITIGATION:"gr",
+  IMPACT:"gr",MONITORING:"gr",ORCHESTRATION:"gr",ONTOLOGY:"gr",ARCHITECTURE:"gr",
+  MAPPING:"gen",SEMANTIC:"gen",PROCESS:"gen",IMPLEMENTATION:"gen"
+};
+
+const W=[
+{w:"IMPLEMENTATION",c:[[5,6],[6,6],[7,6],[8,6],[9,6],[10,6],[11,6],[12,6],[13,6],[14,6],[15,6],[16,6],[17,6],[18,6]]},
+{w:"TRANSFORMATION",c:[[22,6],[22,7],[22,8],[22,9],[22,10],[22,11],[22,12],[22,13],[22,14],[22,15],[22,16],[22,17],[22,18],[22,19]]},
+{w:"CERTIFICATION",c:[[23,11],[23,12],[23,13],[23,14],[23,15],[23,16],[23,17],[23,18],[23,19],[23,20],[23,21],[23,22],[23,23]]},
+{w:"DOCUMENTATION",c:[[16,9],[16,10],[16,11],[16,12],[16,13],[16,14],[16,15],[16,16],[16,17],[16,18],[16,19],[16,20],[16,21]]},
+{w:"ORCHESTRATION",c:[[2,16],[3,16],[4,16],[5,16],[6,16],[7,16],[8,16],[9,16],[10,16],[11,16],[12,16],[13,16],[14,16]]},
+{w:"ARCHITECTURE",c:[[10,3],[11,3],[12,3],[13,3],[14,3],[15,3],[16,3],[17,3],[18,3],[19,3],[20,3],[21,3]]},
+{w:"SEGMENTATION",c:[[19,6],[19,7],[19,8],[19,9],[19,10],[19,11],[19,12],[19,13],[19,14],[19,15],[19,16],[19,17]]},
+{w:"INTEGRATION",c:[[9,3],[9,4],[9,5],[9,6],[9,7],[9,8],[9,9],[9,10],[9,11],[9,12],[9,13]]},
+{w:"REQUIREMENT",c:[[3,11],[3,12],[3,13],[3,14],[3,15],[3,16],[3,17],[3,18],[3,19],[3,20],[3,21]]},
+{w:"ASSUMPTION",c:[[0,4],[0,5],[0,6],[0,7],[0,8],[0,9],[0,10],[0,11],[0,12],[0,13]]},
+{w:"AUTOMATION",c:[[18,14],[18,15],[18,16],[18,17],[18,18],[18,19],[18,20],[18,21],[18,22],[18,23]]},
+{w:"CLUSTERING",c:[[7,0],[8,0],[9,0],[10,0],[11,0],[12,0],[13,0],[14,0],[15,0],[16,0]]},
+{w:"COMPLIANCE",c:[[1,12],[1,13],[1,14],[1,15],[1,16],[1,17],[1,18],[1,19],[1,20],[1,21]]},
+{w:"CONSTRAINT",c:[[14,8],[14,9],[14,10],[14,11],[14,12],[14,13],[14,14],[14,15],[14,16],[14,17]]},
+{w:"DATABRICKS",c:[[6,19],[7,19],[8,19],[9,19],[10,19],[11,19],[12,19],[13,19],[14,19],[15,19]]},
+{w:"EVALUATION",c:[[13,5],[14,5],[15,5],[16,5],[17,5],[18,5],[19,5],[20,5],[21,5],[22,5]]},
+{w:"EXPERIMENT",c:[[4,15],[5,15],[6,15],[7,15],[8,15],[9,15],[10,15],[11,15],[12,15],[13,15]]},
+{w:"GOVERNANCE",c:[[11,2],[12,2],[13,2],[14,2],[15,2],[16,2],[17,2],[18,2],[19,2],[20,2]]},
+{w:"INNOVATION",c:[[17,12],[17,13],[17,14],[17,15],[17,16],[17,17],[17,18],[17,19],[17,20],[17,21]]},
+{w:"MITIGATION",c:[[3,18],[4,18],[5,18],[6,18],[7,18],[8,18],[9,18],[10,18],[11,18],[12,18]]},
+{w:"MONITORING",c:[[14,4],[15,4],[16,4],[17,4],[18,4],[19,4],[20,4],[21,4],[22,4],[23,4]]},
+{w:"PREDICTIVE",c:[[8,1],[9,1],[10,1],[11,1],[12,1],[13,1],[14,1],[15,1],[16,1],[17,1]]},
+{w:"REGRESSION",c:[[20,13],[20,14],[20,15],[20,16],[20,17],[20,18],[20,19],[20,20],[20,21],[20,22]]},
+{w:"VALIDATION",c:[[3,22],[4,22],[5,22],[6,22],[7,22],[8,22],[9,22],[10,22],[11,22],[12,22]]},
+{w:"VERSIONING",c:[[15,8],[15,9],[15,10],[15,11],[15,12],[15,13],[15,14],[15,15],[15,16],[15,17]]},
+{w:"ANALYTICS",c:[[2,3],[2,4],[2,5],[2,6],[2,7],[2,8],[2,9],[2,10],[2,11]]},
+{w:"BENCHMARK",c:[[8,23],[9,23],[10,23],[11,23],[12,23],[13,23],[14,23],[15,23],[16,23]]},
+{w:"CONNECTOR",c:[[2,15],[2,16],[2,17],[2,18],[2,19],[2,20],[2,21],[2,22],[2,23]]},
+{w:"DASHBOARD",c:[[5,14],[6,14],[7,14],[8,14],[9,14],[10,14],[11,14],[12,14],[13,14]]},
+{w:"INGESTION",c:[[2,2],[3,2],[4,2],[5,2],[6,2],[7,2],[8,2],[9,2],[10,2]]},
+{w:"PROFILING",c:[[4,5],[4,6],[4,7],[4,8],[4,9],[4,10],[4,11],[4,12],[4,13]]},
+{w:"SNOWFLAKE",c:[[0,14],[0,15],[0,16],[0,17],[0,18],[0,19],[0,20],[0,21],[0,22]]},
+{w:"WAREHOUSE",c:[[21,10],[21,11],[21,12],[21,13],[21,14],[21,15],[21,16],[21,17],[21,18]]},
+{w:"ALERTING",c:[[11,4],[11,5],[11,6],[11,7],[11,8],[11,9],[11,10],[11,11]]},
+{w:"FAIRNESS",c:[[6,17],[7,17],[8,17],[9,17],[10,17],[11,17],[12,17],[13,17]]},
+{w:"METADATA",c:[[10,6],[10,7],[10,8],[10,9],[10,10],[10,11],[10,12],[10,13]]},
+{w:"ONTOLOGY",c:[[19,16],[19,17],[19,18],[19,19],[19,20],[19,21],[19,22],[19,23]]},
+{w:"PIPELINE",c:[[1,2],[1,3],[1,4],[1,5],[1,6],[1,7],[1,8],[1,9]]},
+{w:"SECURITY",c:[[5,20],[6,20],[7,20],[8,20],[9,20],[10,20],[11,20],[12,20]]},
+{w:"SEMANTIC",c:[[0,1],[1,1],[2,1],[3,1],[4,1],[5,1],[6,1],[7,1]]},
+{w:"TRAINING",c:[[5,3],[5,4],[5,5],[5,6],[5,7],[5,8],[5,9],[5,10]]},
+{w:"WORKFLOW",c:[[8,21],[9,21],[10,21],[11,21],[12,21],[13,21],[14,21],[15,21]]},
+{w:"ANOMALY",c:[[6,7],[6,8],[6,9],[6,10],[6,11],[6,12],[6,13]]},
+{w:"CHARTER",c:[[3,5],[3,6],[3,7],[3,8],[3,9],[3,10],[3,11]]},
+{w:"LINEAGE",c:[[13,7],[14,7],[15,7],[16,7],[17,7],[18,7],[19,7]]},
+{w:"MAPPING",c:[[0,0],[1,0],[2,0],[3,0],[4,0],[5,0],[6,0]]},
+{w:"PROCESS",c:[[1,23],[2,23],[3,23],[4,23],[5,23],[6,23],[7,23]]},
+{w:"TESTING",c:[[8,7],[8,8],[8,9],[8,10],[8,11],[8,12],[8,13]]},
+{w:"USECASE",c:[[7,7],[7,8],[7,9],[7,10],[7,11],[7,12],[7,13]]},
+{w:"DEVOPS",c:[[18,8],[18,9],[18,10],[18,11],[18,12],[18,13]]},
+{w:"IMPACT",c:[[12,7],[12,8],[12,9],[12,10],[12,11],[12,12]]},
+{w:"INTAKE",c:[[14,15],[14,16],[14,17],[14,18],[14,19],[14,20]]},
+{w:"METRIC",c:[[17,0],[18,0],[19,0],[20,0],[21,0],[22,0]]},
+{w:"SCHEMA",c:[[18,1],[19,1],[20,1],[21,1],[22,1],[23,1]]},
+{w:"TARGET",c:[[9,10],[9,9],[9,8],[9,7],[9,6],[9,5]]},
+{w:"AGENT",c:[[17,7],[18,7],[19,7],[20,7],[21,7]]},
+{w:"AZURE",c:[[20,10],[20,11],[20,12],[20,13],[20,14]]},
+{w:"DRIFT",c:[[13,9],[13,10],[13,11],[13,12],[13,13]]},
+{w:"BIAS",c:[[20,8],[21,8],[22,8],[23,8]]},
+{w:"RISK",c:[[4,21],[5,21],[6,21],[7,21]]},
+{w:"API",c:[[5,5],[6,5],[7,5]]},
+{w:"GIT",c:[[5,10],[5,11],[5,12]]}
+];
+
+const TOTAL=W.length;
+W.forEach(wd=>{wd.cat=CM[wd.w]||"gen";CATS[wd.cat].w.push(wd.w)});
+
+let found=new Set(),t0=Date.now(),tmr;
+const cells=[];
+
+// Build grid
+const gt=document.getElementById("gt");
+for(let r=0;r<24;r++){const tr=document.createElement("tr");cells[r]=[];for(let c=0;c<24;c++){const td=document.createElement("td");td.textContent=G[r][c];td.dataset.r=r;td.dataset.c=c;cells[r][c]=td;tr.appendChild(td)}gt.appendChild(tr)}
+
+// Build word list
+const wl=document.getElementById("wl"),we={};
+for(const[k,cat]of Object.entries(CATS)){
+  if(!cat.w.length)continue;
+  const s=document.createElement("div");s.className="cat-sec";
+  const h=document.createElement("div");h.className="cat-hdr "+cat.c;
+  h.innerHTML=`<span class="d"></span>${cat.l} <span style="opacity:0.5;margin-left:auto">${cat.w.length}</span>`;
+  s.appendChild(h);
+  const d=document.createElement("div");
+  cat.w.sort().forEach(w=>{const sp=document.createElement("span");sp.className="wrd";sp.textContent=w;sp.id="w-"+w;we[w]=sp;d.appendChild(sp)});
+  s.appendChild(d);wl.appendChild(s);
+}
+
+// Timer
+function tick(){const e=Math.floor((Date.now()-t0)/1000);document.getElementById("tm").textContent=String(Math.floor(e/60)).padStart(2,"0")+":"+String(e%60).padStart(2,"0")}
+tmr=setInterval(tick,1000);
+
+// Selection
+let ing=false,start=null,sc=[];
+function clr(){sc.forEach(([r,c])=>cells[r][c].classList.remove("sel"));sc=[];}
+
+function line(r1,c1,r2,c2){
+  const res=[];
+  if(r1===r2){const a=Math.min(c1,c2),b=Math.max(c1,c2);for(let c=a;c<=b;c++)res.push([r1,c])}
+  else if(c1===c2){const a=Math.min(r1,r2),b=Math.max(r1,r2);for(let r=a;r<=b;r++)res.push([r,c1])}
+  return res;
+}
+
+function hilite(r2,c2){
+  clr();if(!start)return;
+  const[r1,c1]=start;
+  let er=r2,ec=c2;
+  const dr=Math.abs(r2-r1),dc=Math.abs(c2-c1);
+  if(dr!==0&&dc!==0){dc>dr?er=r1:ec=c1}
+  sc=line(r1,c1,er,ec);
+  sc.forEach(([r,c])=>cells[r][c].classList.add("sel"));
+}
+
+function check(){
+  if(sc.length<2)return;
+  for(const wd of W){
+    if(found.has(wd.w)||wd.c.length!==sc.length)continue;
+    let mf=true,mr=true;
+    for(let i=0;i<wd.c.length;i++){
+      if(wd.c[i][0]!==sc[i][0]||wd.c[i][1]!==sc[i][1])mf=false;
+      if(wd.c[i][0]!==sc[sc.length-1-i][0]||wd.c[i][1]!==sc[sc.length-1-i][1])mr=false;
+    }
+    if(mf||mr){hit(wd);return}
+  }
+}
+
+function hit(wd){
+  found.add(wd.w);
+  const fc=CATS[wd.cat].f;
+  wd.c.forEach(([r,c])=>cells[r][c].classList.add("found",fc));
+  if(we[wd.w])we[wd.w].classList.add("done");
+  toast("✓ "+wd.w);prog();
+  if(found.size===TOTAL){clearInterval(tmr);tick();document.getElementById("vt").textContent=document.getElementById("tm").textContent;setTimeout(()=>document.getElementById("vic").classList.add("show"),500)}
+}
+
+function prog(){
+  const n=found.size;
+  document.getElementById("fc").textContent=n;
+  document.getElementById("pt").textContent=n+" / "+TOTAL;
+  const p=Math.round(n/TOTAL*100);
+  document.getElementById("pp").textContent=p+"%";
+  document.getElementById("pf").style.width=p+"%";
+}
+
+function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1400)}
+
+function rc(e){const t=e.touches?e.touches[0]:e;const el=document.elementFromPoint(t.clientX,t.clientY);if(!el||!el.dataset.r)return null;return[+el.dataset.r,+el.dataset.c]}
+
+gt.addEventListener("mousedown",e=>{const p=rc(e);if(!p)return;ing=true;start=p;hilite(p[0],p[1]);e.preventDefault()});
+gt.addEventListener("mousemove",e=>{if(!ing)return;const p=rc(e);if(p)hilite(p[0],p[1])});
+document.addEventListener("mouseup",()=>{if(!ing)return;ing=false;check();clr();start=null});
+gt.addEventListener("touchstart",e=>{const p=rc(e);if(!p)return;ing=true;start=p;hilite(p[0],p[1]);e.preventDefault()},{passive:false});
+gt.addEventListener("touchmove",e=>{if(!ing)return;const p=rc(e);if(p)hilite(p[0],p[1]);e.preventDefault()},{passive:false});
+document.addEventListener("touchend",()=>{if(!ing)return;ing=false;check();clr();start=null});
+
+prog();
+</script>
+</body>
+</html>
